@@ -13,6 +13,9 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "experimentalDecorators": true, // required for TypeORM
+    "emitDecoratorMetadata": true, // required for TypeORM
+    "strictPropertyInitialization" : false, // required for TypeORM
     "plugins": [
       {
         "name": "next"
