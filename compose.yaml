@@ -1,0 +1,78 @@
+services:
+  seq:
+    labels:
+      - Description=Seq
+      - 'Vendor=Datalust Pty Ltd'
+      - desktop.docker.io/wsl-distro=Ubuntu
+      - org.opencontainers.image.ref.name=ubuntu
+      - org.opencontainers.image.version=22.04
+    image: datalust/seq
+    container_name: seq
+    ports:
+      - 5341:5341
+      - 45341:45341
+      - 8341:80
+    volumes:
+      - ./logs/seqdata:/data
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: Y
+      SEQ_FIRSTRUN_ADMINUSERNAME: 'SEQ_FIRSTRUN_ADMINUSERNAME'
+      SEQ_FIRSTRUN_ADMINPASSWORDHASH: 'SEQ_FIRSTRUN_ADMINPASSWORDHASH'
+      # - SEQ_LICENSE= # Replace with your Seq license key or leave blank for trial.
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: keycloak
+    ports:
+      - 48081:8080
+    restart: unless-stopped
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: 'KC_BOOTSTRAP_ADMIN_USERNAME'
+      KC_BOOTSTRAP_ADMIN_PASSWORD: 'KC_BOOTSTRAP_ADMIN_PASSWORD'
+    command: start-dev #--http-port 8080 --https-port 8443
+
+  web:
+    image: localtest/web
+    container_name: web
+    ports:
+      - 43000:3000
+    restart: unless-stopped
+    environment:
+      NEXT_TELEMETRY_DISABLED: 1
+      AUTH_SECRET: 'AUTH_SECRET' # Added by `npx auth`. Read more: https://cli.authjs.dev
+      AUTH_URL: http://localhost:43000
+      AUTH_KEYCLOAK_ID: nextjs-space
+      AUTH_KEYCLOAK_SECRET: 'AUTH_KEYCLOAK_SECRET'
+      AUTH_KEYCLOAK_ISSUER: http://localhost:48081/realms/AUTH_KEYCLOAK_ISSUER
+      SEQ_URL: http://seq:5341
+      SEQ_APIKEY: 'SEQ_APIKEY'
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: 'DB_USERNAME'
+      DB_PASSWORD: 'DB_PASSWORD'
+      DB_DATABASE: nextjs-space
+
+  db:
+    image: postgres
+    restart: unless-stopped #: always
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    # or set shared memory limit when deploy via swarm stack
+    volumes:
+      - /var/lib/postgresql/data:/var/lib/postgresql/data
+      - type: tmpfs
+        target: /dev/shm
+        tmpfs:
+          size: 134217728 # 128*2^20 bytes = 128Mb
+    environment:
+      POSTGRES_USER: 'POSTGRES_USER'
+      POSTGRES_PASSWORD: 'POSTGRES_PASSWORD'
+    ports:
+      - 5432:5432
+
+  adminer:
+    image: adminer
+    restart: unless-stopped #: always
+    ports:
+      - 48080:8080
